@@ -143,10 +143,14 @@ class ChessGridActions:
 
             for c in contours:
                 (x, y, w, h) = cv2.boundingRect(c)
-                if (w >= 400 and w < 1000) and (h > 400 and h < 1000) and (abs(w - h) < 10):
+                if (w >= 400 and w < 1000) and (h > 400 and h < 1000) and (abs(w - h) < 40):
                     # crop_img = imgUmat[y:y+h, x:x+w]
                     # Image.from_array(crop_img).write_file('/tmp/contour.jpg')
-                    return ui.Rect(x + window_rect.x, y + window_rect.y, w, w)
+
+                    board_size = min(w, h)
+                    centered_x = window_rect.x + x + (w - board_size) / 2
+                    centered_y = window_rect.y + y + (h - board_size) / 2
+                    return ui.Rect(centered_x, centered_y, board_size, board_size)
 
             return None
 
