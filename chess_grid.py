@@ -29,7 +29,7 @@ class ChessGrid:
 
     def setup(self, *, rect: ui.Rect = None):
         screens = ui.screens()
-        screen = screens[0] # TODO: multiple screen support
+        screen = screens[0]  # TODO: multiple screen support
         self.screen = screen
 
         if rect is not None:
@@ -124,10 +124,14 @@ class ChessGrid:
 
     def flip_board(self):
         self.flipped = not self.flipped
-        self.setup()
+        if self.visible and self.show_text:
+            self.setup()
 
     def toggle_text(self):
-        self.show_text = not self.show_text
+        if not self.visible:
+            self.show_text = True
+        else:
+            self.show_text = not self.show_text
         self.setup()
 
 
