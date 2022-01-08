@@ -9,5 +9,11 @@ chess flip:
 chess text:
     user.chess_grid_toggle_text()
 
+chess show:
+    user.chess_grid_show()
+
+chess hide:
+    user.chess_grid_hide()
+
 chess [grid] off:
     user.chess_grid_close()

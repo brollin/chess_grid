@@ -25,30 +25,39 @@ class ChessGrid:
         self.show_text = True
         self.mcanvas = None
         self.active = False
+        self.visible = False
 
     def setup(self, *, rect: ui.Rect = None):
         screens = ui.screens()
-        screen = screens[0]
+        screen = screens[0] # TODO: multiple screen support
+        self.screen = screen
 
         if rect is not None:
             self.rect = rect
             self.board_size = rect.height
             self.square_size = self.board_size // 8
-        self.screen = screen
-        if self.mcanvas is not None:
-            self.mcanvas.close()
-        self.mcanvas = canvas.Canvas.from_screen(screen)
-        if self.active:
-            self.mcanvas.register("draw", self.draw)
-            self.mcanvas.freeze()
+
+        if self.mcanvas is None:
+            self.mcanvas = canvas.Canvas.from_screen(screen)
+        else:
+            self.mcanvas.unregister("draw", self.draw)
+        self.mcanvas.register("draw", self.draw)
+        self.mcanvas.freeze()
+        self.visible = True
+        self.active = True
 
     def show(self):
-        if self.active:
+        if self.visible:
             return
         self.mcanvas.register("draw", self.draw)
         self.mcanvas.freeze()
-        self.active = True
-        return
+        self.visible = True
+
+    def hide(self):
+        if not self.visible:
+            return
+        self.mcanvas.unregister("draw", self.draw)
+        self.visible = False
 
     def close(self):
         if not self.active:
@@ -56,6 +65,7 @@ class ChessGrid:
         self.mcanvas.unregister("draw", self.draw)
         self.mcanvas.close()
         self.mcanvas = None
+        self.visible = False
         self.active = False
 
     def draw(self, canvas):
@@ -105,10 +115,7 @@ class ChessGrid:
                     )
 
         paint.stroke_width = grid_stroke
-        if self.active:
-            paint.color = "ff0000ff"
-        else:
-            paint.color = "000000ff"
+        paint.color = "ff0000ff"
         draw_grid()
 
         paint.textsize = 16
@@ -132,6 +139,10 @@ class ChessGridActions:
     def chess_grid_activate():
         """Searches for a chessboard on the screen and overlays the grid on it"""
         def find_chessboard():
+            if cg.active:
+                cg.close()
+                ctx.tags = []
+
             window_rect = ui.active_window().rect
             img = screen.capture_rect(window_rect)
 
@@ -161,8 +172,15 @@ class ChessGridActions:
             return
 
         cg.setup(rect=rect)
-        cg.show()
         ctx.tags = ["user.chess_grid_showing"]
+
+    def chess_grid_show():
+        """Show the grid"""
+        cg.show()
+
+    def chess_grid_hide():
+        """Hide the grid while remaining activated"""
+        cg.hide()
 
     def chess_grid_close():
         """Close the active grid"""
