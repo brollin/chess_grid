@@ -122,8 +122,16 @@ class ChessGrid:
         if self.show_text:
             draw_text()
 
-    def flip_board(self):
-        self.flipped = not self.flipped
+    def flip_board(self, orientation: str):
+        if orientation == "":
+            self.flipped = not self.flipped
+        elif orientation == "white":
+            self.flipped = False
+        elif orientation == "black":
+            self.flipped = True
+        else:
+            return
+
         if self.visible and self.show_text:
             self.setup()
 
@@ -223,9 +231,9 @@ class ChessGridActions:
         if len(coordinates) == 4:
             click_position(*coordinate_to_position(coordinates[2:]))
 
-    def chess_grid_flip_board():
+    def chess_grid_flip_board(orientation: str):
         """Flips the orientation of the board"""
-        cg.flip_board()
+        cg.flip_board(orientation)
 
     def chess_grid_toggle_text():
         """Toggles whether the text is shown"""

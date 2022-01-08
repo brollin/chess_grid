@@ -4,7 +4,13 @@ tag: user.chess_grid_showing
     user.chess_grid_click_square(any_alphanumeric_key_list)
 
 chess flip:
-    user.chess_grid_flip_board()
+    user.chess_grid_flip_board("")
+
+chess white:
+    user.chess_grid_flip_board("white")
+
+chess black:
+    user.chess_grid_flip_board("black")
 
 chess text:
     user.chess_grid_toggle_text()
