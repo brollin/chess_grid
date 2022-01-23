@@ -1,3 +1,4 @@
+import subprocess
 from talon import Module, Context, canvas, ui, ctrl, screen
 from talon.skia import Paint, Rect, Image
 from talon.types.point import Point2d
@@ -13,6 +14,17 @@ ctx = Context()
 
 files = ["a", "b", "c", "d", "e", "f", "g", "h"]
 ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
+
+default_position = [
+    ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
+    ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
+    ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
+]
 
 
 class ChessGrid:
@@ -41,9 +53,9 @@ class ChessGrid:
             self.mcanvas = canvas.Canvas.from_screen(screen)
         else:
             self.mcanvas.unregister("draw", self.draw)
-        self.mcanvas.register("draw", self.draw)
-        self.mcanvas.freeze()
-        self.visible = True
+        # self.mcanvas.register("draw", self.draw)
+        # self.mcanvas.freeze()
+        # self.visible = True
         self.active = True
 
     def show(self):
@@ -238,3 +250,70 @@ class ChessGridActions:
     def chess_grid_toggle_text():
         """Toggles whether the text is shown"""
         cg.toggle_text()
+
+    def chess_testing():
+        """Testing"""
+        ChessGridActions.chess_grid_activate()
+        img = screen.capture_rect(cg.rect)
+
+        imgUmat = np.array(img)
+        gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
+        ret, whiteness_thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
+        Image.from_array(whiteness_thresh).write_file('/tmp/findwhite.jpg')
+        subprocess.run(("open", "/tmp/findwhite.jpg"))
+
+        ret, blackness_thresh = cv2.threshold(gray, 40, 255, cv2.THRESH_BINARY)
+        Image.from_array(blackness_thresh).write_file('/tmp/findblack.jpg')
+        subprocess.run(("open", "/tmp/findblack.jpg"))
+
+        def mse(imageA, imageB):
+            # the 'Mean Squared Error' between the two images is the
+            # sum of the squared difference between the two images;
+            # NOTE: the two images must have the same dimension
+            err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
+            err /= float(imageA.shape[0] * imageA.shape[1])
+
+            # return the MSE, the lower the error, the more "similar"
+            # the two images are
+            return err
+
+        square_size = int(len(gray[0]) / 8)
+        board = [["_"] * 8 for _ in range(8)]
+        piece_set = {}
+        for row in range(8):
+            for column in range(8):
+                square = np.asarray(blackness_thresh[row * square_size:(row + 1)
+                                    * square_size, column * square_size:(column + 1) * square_size])
+                blackness = 1 - np.sum(square) / square.size / 255.0
+                if blackness > 0.2:
+                    board[row][column] = "B"
+                    if default_position[row][column].startswith("b"):
+                        piece_set[default_position[row][column]] = square
+
+                square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
+                                    * square_size, column * square_size:(column + 1) * square_size])
+                whiteness = np.sum(square) / square.size / 255.0
+                if whiteness > 0.1:
+                    board[row][column] = "W"
+                    if default_position[row][column].startswith("w"):
+                        piece_set[default_position[row][column]] = square
+        print('\n' + '\n'.join([''.join(row) for row in board]))
+
+        print("check for accuracy")
+        for row in range(8):
+            for column in range(8):
+                square = np.asarray(blackness_thresh[row * square_size:(row + 1)
+                                    * square_size, column * square_size:(column + 1) * square_size])
+                blackness = 1 - np.sum(square) / square.size / 255.0
+                if blackness > 0.2:
+                    for p in ["bP", "bN", "bB", "bR", "bK", "bQ"]:
+                        if mse(piece_set[p], square) < 1000:
+                            board[row][column] = p
+                square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
+                                    * square_size, column * square_size:(column + 1) * square_size])
+                whiteness = np.sum(square) / square.size / 255.0
+                if whiteness > 0.1:
+                    for p in ["wP", "wN", "wB", "wR", "wK", "wQ"]:
+                        if mse(piece_set[p], square) < 2000:
+                            board[row][column] = p
+        print('\n' + '\n'.join(['\t'.join(row) for row in board]))

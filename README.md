@@ -22,6 +22,7 @@ Check out the talon files to see the other commands that are available.
 ## Future work
 - Allow showing only the labels
 - Allow manually positioning the grid
+- Implement piece detection, perhaps with standard image processing techniques
 - Implement piece detection, perhaps like [this](https://github.com/IlicStefan/ChessDiagramRecognition/)
 - Possible piece detection data set [here](https://www.kaggle.com/anshulmehtakaggl/chess-pieces-detection-images-dataset)
 - Using piece detection, implement more natural move commands like `knight each four`
