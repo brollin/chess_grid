@@ -1,4 +1,4 @@
-tag: user.chess_grid_showing
+tag: user.chess_grid_activated
 -
 ^mark <user.any_alphanumeric_key>+$:
     user.chess_grid_click_square(any_alphanumeric_key_list)
