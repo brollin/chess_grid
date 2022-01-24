@@ -3,6 +3,9 @@ tag: user.chess_grid_activated
 ^mark <user.any_alphanumeric_key>+$:
     user.chess_grid_click_square(any_alphanumeric_key_list)
 
+^sally <user.any_alphanumeric_key>+$:
+    user.chess_grid_move(any_alphanumeric_key_list)
+
 chess flip:
     user.chess_grid_flip_board("")
 

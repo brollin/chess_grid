@@ -194,6 +194,30 @@ class ChessGrid:
         if len(coordinates) == 4:
             click_position(*coordinate_to_position(coordinates[2:]))
 
+    def make_move(self, move: typing.List[str]):
+        self.detect_position()
+
+        # process the move into a form the library likes
+        move_san = "".join(move)
+        move_san = move_san.replace("n", "N").replace("r", "R").replace(
+            "q", "Q").replace("k", "K").replace("o", "O")
+        # this is not perfect because of the pawn taking case
+        if move_san.startswith("b") and len(move_san) == 3:
+            move_san = move_san.replace("b", "B", 1)
+        # TODO promotion
+
+        try:
+            uci_move = self.board.parse_san(move_san).uci()
+        except ValueError:
+            # try again by passing the turn and attempting the move again
+            try:
+                self.board.push(chess.Move.null())
+                uci_move = self.board.parse_san(move_san).uci()
+            except ValueError:
+                print("invalid move: " + move_san)
+                return
+        self.click_squares([char for char in uci_move])
+
     def find_chessboard(self):
         if self.active:
             self.close()
@@ -294,6 +318,8 @@ class ChessGrid:
                             self.board.set_piece_at(row_column_to_square(
                                 row, column), chess.Piece.from_symbol(piece))
                             break
+        # assume all castling rights
+        self.board.set_castling_fen("QKqk")
         print("board state:\n" + str(self.board))
 
 
@@ -339,6 +365,10 @@ class ChessGridActions:
             return
 
         cg.click_squares(coordinates)
+
+    def chess_grid_move(move: typing.List[str]):
+        """Make a move via SAN notation"""
+        cg.make_move(move)
 
     def chess_grid_flip_board(orientation: str):
         """Flips the orientation of the board"""
