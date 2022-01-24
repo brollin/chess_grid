@@ -16,15 +16,16 @@ ctx = Context()
 files = ["a", "b", "c", "d", "e", "f", "g", "h"]
 ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
+# where in the starting position to find each piece
 default_position = [
-    ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
-    ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
+    ["r", "n", "b", "q", "k", "", "", ""],
+    ["p", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
-    ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
-    ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
+    ["P", "", "", "", "", "", "", ""],
+    ["R", "N", "B", "Q", "K", "", "", ""],
 ]
 
 
@@ -42,14 +43,16 @@ def mse(imageA, imageB):
 
 class ChessGrid:
     def __init__(self):
-        self.screen = None
-        self.rect = None
-        self.board_size = 0
-        self.square_size = 0
-        self.flipped = False
-        self.show_text = True
-        self.mcanvas = None
         self.active = False
+        self.board = chess.Board()
+        self.board_size = 0
+        self.flipped = False
+        self.mcanvas = None
+        self.piece_set = {}
+        self.rect = None
+        self.screen = None
+        self.show_text = True
+        self.square_size = 0
         self.visible = False
 
     def setup(self, *, rect: ui.Rect = None, visible: bool = True):
@@ -195,15 +198,16 @@ class ChessGrid:
         if self.active:
             self.close()
 
+        # find the chessboard by first applying a threshold filter to the grayscale window
         window_rect = ui.active_window().rect
         img = screen.capture_rect(window_rect)
-
         imgUmat = np.array(img)
         gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
         # Image.from_array(thresh).write_file('/tmp/threshold.jpg')
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+        # now search all of the contours for a square
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
             (x, y, w, h) = cv2.boundingRect(c)
             if (w >= 400 and w < 1000) and (h > 400 and h < 1000) and (abs(w - h) < 40):
@@ -217,11 +221,12 @@ class ChessGrid:
 
         return None
 
-    def reference(self):
-        img = screen.capture_rect(cg.rect)
-
+    def apply_thresholds(self):
+        """Return the grayscale and whiteness and blackness thresholds for the board"""
+        img = screen.capture_rect(self.rect)
         imgUmat = np.array(img)
         gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
+
         _, whiteness_thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
         # Image.from_array(whiteness_thresh).write_file('/tmp/findwhite.jpg')
         # subprocess.run(("open", "/tmp/findwhite.jpg"))
@@ -230,46 +235,66 @@ class ChessGrid:
         # Image.from_array(blackness_thresh).write_file('/tmp/findblack.jpg')
         # subprocess.run(("open", "/tmp/findblack.jpg"))
 
-        square_size = int(len(gray[0]) / 8)
-        board = [["_"] * 8 for _ in range(8)]
-        piece_set = {}
+        return (gray, whiteness_thresh, blackness_thresh)
+
+    def reference(self):
+        """Assume the chess pieces are in the starting positions and generate a piece set"""
+        (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
+        square_size = self.square_size
+        # board = [["_"] * 8 for _ in range(8)]
+        # this can be way more efficient, but lose ability to show black and white pieces
         for row in range(8):
             for column in range(8):
                 square = np.asarray(blackness_thresh[row * square_size:(row + 1)
                                     * square_size, column * square_size:(column + 1) * square_size])
                 blackness = 1 - np.sum(square) / square.size / 255.0
                 if blackness > 0.2:
-                    board[row][column] = "B"
-                    if default_position[row][column].startswith("b"):
-                        piece_set[default_position[row][column]] = square
+                    # board[row][column] = "B"
+                    if default_position[row][column].islower():
+                        self.piece_set[default_position[row][column]] = square
 
                 square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                     * square_size, column * square_size:(column + 1) * square_size])
                 whiteness = np.sum(square) / square.size / 255.0
                 if whiteness > 0.1:
-                    board[row][column] = "W"
-                    if default_position[row][column].startswith("w"):
-                        piece_set[default_position[row][column]] = square
-        print('\n' + '\n'.join([''.join(row) for row in board]))
+                    # board[row][column] = "W"
+                    if default_position[row][column].isupper():
+                        self.piece_set[default_position[row][column]] = square
+        # print('\n' + '\n'.join([''.join(row) for row in board]))
 
-        print("check for accuracy")
+        self.detect_position()
+
+    def detect_position(self):
+        (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
+        square_size = self.square_size
+
+        def row_column_to_square(row, column):
+            # TODO account for orientation flip
+            return chess.parse_square(files[column] + str(8 - row))
+        self.board.clear()
+        # this can also be more efficient
         for row in range(8):
             for column in range(8):
                 square = np.asarray(blackness_thresh[row * square_size:(row + 1)
                                     * square_size, column * square_size:(column + 1) * square_size])
                 blackness = 1 - np.sum(square) / square.size / 255.0
                 if blackness > 0.2:
-                    for p in ["bP", "bN", "bB", "bR", "bK", "bQ"]:
-                        if mse(piece_set[p], square) < 1000:
-                            board[row][column] = p
+                    for piece in ["p", "n", "b", "r", "k", "q"]:
+                        if mse(self.piece_set[piece], square) < 1000:
+                            self.board.set_piece_at(row_column_to_square(
+                                row, column), chess.Piece.from_symbol(piece))
+                            break
+
                 square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                     * square_size, column * square_size:(column + 1) * square_size])
                 whiteness = np.sum(square) / square.size / 255.0
                 if whiteness > 0.1:
-                    for p in ["wP", "wN", "wB", "wR", "wK", "wQ"]:
-                        if mse(piece_set[p], square) < 2000:
-                            board[row][column] = p
-        print('\n' + '\n'.join(['\t'.join(row) for row in board]))
+                    for piece in ["P", "N", "B", "R", "K", "Q"]:
+                        if mse(self.piece_set[piece], square) < 2000:
+                            self.board.set_piece_at(row_column_to_square(
+                                row, column), chess.Piece.from_symbol(piece))
+                            break
+        print("board state:\n" + str(self.board))
 
 
 cg = ChessGrid()
@@ -336,3 +361,7 @@ class ChessGridActions:
         ctx.tags = ["user.chess_grid_activated"]
 
         cg.reference()
+
+    def chess_detect():
+        """Detect the position of the chess board"""
+        cg.detect_position()

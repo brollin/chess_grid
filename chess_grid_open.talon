@@ -21,5 +21,8 @@ chess show:
 chess hide:
     user.chess_grid_hide()
 
+chess detect:
+    user.chess_detect()
+
 chess [grid] off:
     user.chess_grid_close()
