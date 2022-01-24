@@ -17,7 +17,7 @@ files = ["a", "b", "c", "d", "e", "f", "g", "h"]
 ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
 # where in the starting position to find each piece
-default_position = [
+piece_positions = [
     ["r", "n", "b", "q", "k", "", "", ""],
     ["p", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
@@ -27,6 +27,7 @@ default_position = [
     ["P", "", "", "", "", "", "", ""],
     ["R", "N", "B", "Q", "K", "", "", ""],
 ]
+flipped_piece_positions = [row[::-1] for row in piece_positions[::-1]]
 
 
 def mse(imageA, imageB):
@@ -152,7 +153,7 @@ class ChessGrid:
         if self.show_text:
             draw_text()
 
-    def flip_board(self, orientation: str):
+    def flip_board(self, orientation: str = ""):
         if orientation == "":
             self.flipped = not self.flipped
         elif orientation == "white":
@@ -194,17 +195,21 @@ class ChessGrid:
         if len(coordinates) == 4:
             click_position(*coordinate_to_position(coordinates[2:]))
 
-    def make_move(self, move: typing.List[str]):
+    def make_move(self, move: typing.List[str], color: str):
         self.detect_position()
 
-        # process the move into a form the library likes
+        # it will be white's turn by default, so pass the turn if it should be black's turn
+        if color == "black":
+            self.board.push(chess.Move.null())
+
+        # process the move into a more proper form of SAN
         move_san = "".join(move)
         move_san = move_san.replace("n", "N").replace("r", "R").replace(
             "q", "Q").replace("k", "K").replace("o", "O")
         # this is not perfect because of the pawn taking case
         if move_san.startswith("b") and len(move_san) == 3:
             move_san = move_san.replace("b", "B", 1)
-        # TODO promotion
+        # TODO promotion - maybe it just works?
 
         try:
             uci_move = self.board.parse_san(move_san).uci()
@@ -265,6 +270,7 @@ class ChessGrid:
         """Assume the chess pieces are in the starting positions and generate a piece set"""
         (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
         square_size = self.square_size
+        oriented_piece_positions = flipped_piece_positions if self.flipped else piece_positions
         # board = [["_"] * 8 for _ in range(8)]
         # this can be way more efficient, but lose ability to show black and white pieces
         for row in range(8):
@@ -274,29 +280,32 @@ class ChessGrid:
                 blackness = 1 - np.sum(square) / square.size / 255.0
                 if blackness > 0.2:
                     # board[row][column] = "B"
-                    if default_position[row][column].islower():
-                        self.piece_set[default_position[row][column]] = square
+                    if oriented_piece_positions[row][column].islower():
+                        self.piece_set[oriented_piece_positions[row][column]] = square
 
                 square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                     * square_size, column * square_size:(column + 1) * square_size])
                 whiteness = np.sum(square) / square.size / 255.0
                 if whiteness > 0.1:
                     # board[row][column] = "W"
-                    if default_position[row][column].isupper():
-                        self.piece_set[default_position[row][column]] = square
+                    if oriented_piece_positions[row][column].isupper():
+                        self.piece_set[oriented_piece_positions[row][column]] = square
         # print('\n' + '\n'.join([''.join(row) for row in board]))
 
         self.detect_position()
 
     def detect_position(self):
+        # TODO this is called twice when reference is run
         (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
         square_size = self.square_size
 
         def row_column_to_square(row, column):
-            # TODO account for orientation flip
+            if self.flipped:
+                return chess.parse_square(files[7 - column] + str(row + 1))
             return chess.parse_square(files[column] + str(8 - row))
+
         self.board.clear()
-        # this can also be more efficient
+        # TODO this can also be more efficient
         for row in range(8):
             for column in range(8):
                 square = np.asarray(blackness_thresh[row * square_size:(row + 1)
@@ -304,7 +313,7 @@ class ChessGrid:
                 blackness = 1 - np.sum(square) / square.size / 255.0
                 if blackness > 0.2:
                     for piece in ["p", "n", "b", "r", "k", "q"]:
-                        if mse(self.piece_set[piece], square) < 1000:
+                        if mse(self.piece_set[piece], square) < 2000:
                             self.board.set_piece_at(row_column_to_square(
                                 row, column), chess.Piece.from_symbol(piece))
                             break
@@ -366,9 +375,9 @@ class ChessGridActions:
 
         cg.click_squares(coordinates)
 
-    def chess_grid_move(move: typing.List[str]):
+    def chess_grid_move(move: typing.List[str], color: str):
         """Make a move via SAN notation"""
-        cg.make_move(move)
+        cg.make_move(move, color)
 
     def chess_grid_flip_board(orientation: str):
         """Flips the orientation of the board"""
@@ -378,7 +387,7 @@ class ChessGridActions:
         """Toggles whether the text is shown"""
         cg.toggle_text()
 
-    def chess_reference():
+    def chess_reference(orientation: str):
         """Activate the chess grid and reference the board for later piece detection"""
         rect = cg.find_chessboard()
         if rect is None:
@@ -388,10 +397,10 @@ class ChessGridActions:
             return
 
         cg.setup(rect=rect, visible=False)
+        cg.flip_board("black" if orientation == "black" else "white")
+        cg.reference()
         ctx.tags = ["user.chess_grid_activated"]
 
-        cg.reference()
-
     def chess_detect():
-        """Detect the position of the chess board"""
+        """Detect the position of the chess board. Requires a reference first"""
         cg.detect_position()
