@@ -209,7 +209,7 @@ class ChessGrid:
         # this is not perfect because of the pawn taking case
         if move_san.startswith("b") and len(move_san) == 3:
             move_san = move_san.replace("b", "B", 1)
-        # TODO promotion - maybe it just works?
+        # TODO promotion
 
         try:
             uci_move = self.board.parse_san(move_san).uci()
@@ -232,16 +232,22 @@ class ChessGrid:
         img = screen.capture_rect(window_rect)
         imgUmat = np.array(img)
         gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
-        # Image.from_array(thresh).write_file('/tmp/threshold.jpg')
+        _, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
 
-        # now search all of the contours for a square
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # use a close morphology transform to filter out thin lines
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4,8))
+        morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        # Image.from_array(morph).write_file('/tmp/morph.jpg')
+        # subprocess.run(("open", "/tmp/morph.jpg"))
+
+        # now search all of the contours for a large square-ish thing; that is hopefully the board
+        contours, _ = cv2.findContours(morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
             (x, y, w, h) = cv2.boundingRect(c)
-            if (w >= 400 and w < 1000) and (h > 400 and h < 1000) and (abs(w - h) < 40):
-                # crop_img = imgUmat[y:y+h, x:x+w]
+            if (w >= 400 and w < 1500) and (h > 400 and h < 1500) and (abs(w - h) < 60):
+                # crop_img = thresh[y:y+h, x:x+w]
                 # Image.from_array(crop_img).write_file('/tmp/contour.jpg')
+                # subprocess.run(("open", "/tmp/contour.jpg"))
 
                 board_size = min(w, h)
                 centered_x = window_rect.x + x + (w - board_size) / 2
