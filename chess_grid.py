@@ -262,7 +262,7 @@ class ChessGrid:
         imgUmat = np.array(img)
         gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
 
-        _, whiteness_thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
+        _, whiteness_thresh = cv2.threshold(gray, 210, 255, cv2.THRESH_BINARY)
         # Image.from_array(whiteness_thresh).write_file('/tmp/findwhite.jpg')
         # subprocess.run(("open", "/tmp/findwhite.jpg"))
 
