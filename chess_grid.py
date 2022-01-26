@@ -270,18 +270,19 @@ class ChessGrid:
 
     def reference(self):
         """Assume the chess pieces are in the starting positions and generate a reference piece set"""
-        (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
+        thresholds = self.apply_thresholds()
+        (_, whiteness_thresh, blackness_thresh) = thresholds
         square_size = self.square_size
         oriented_piece_positions = flipped_piece_positions if self.flipped else piece_positions
-        # TODO make more efficient
         detection_error = False
         for row in range(8):
             for column in range(8):
                 piece = oriented_piece_positions[row][column]
                 if piece.islower():
                     potential_black_piece = np.asarray(blackness_thresh[row * square_size:(row + 1)
-                                        * square_size, column * square_size:(column + 1) * square_size])
-                    blackness = 1 - np.sum(potential_black_piece) / potential_black_piece.size / 255.0
+                                                                        * square_size, column * square_size:(column + 1) * square_size])
+                    blackness = 1 - np.sum(potential_black_piece) / \
+                        potential_black_piece.size / 255.0
                     if blackness > 0.2:
                         self.piece_set[piece] = potential_black_piece
                         # this square is a black piece so we don't need to check white
@@ -292,7 +293,7 @@ class ChessGrid:
 
                 if piece.isupper():
                     potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
-                                        * square_size, column * square_size:(column + 1) * square_size])
+                                                                        * square_size, column * square_size:(column + 1) * square_size])
                     whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
                     if whiteness > 0.1:
                         self.piece_set[piece] = potential_white_piece
@@ -301,15 +302,17 @@ class ChessGrid:
                         detection_error = True
 
         if not detection_error:
-            self.detect_position()
+            self.detect_position(thresholds=thresholds)
 
-    def detect_position(self):
+    def detect_position(self, *, thresholds=None):
         if self.piece_set is None:
-            # a board has not been referenced yet
+            # a board has not been referenced yet, fail silently
             return
-        # TODO this is called twice when reference is run
-        (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
-        square_size = self.square_size
+
+        if thresholds is not None:
+            (_, whiteness_thresh, blackness_thresh) = thresholds
+        else:
+            (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
 
         def row_column_to_square(row, column):
             if self.flipped:
@@ -317,34 +320,40 @@ class ChessGrid:
             return chess.parse_square(files[column] + str(8 - row))
 
         self.board.clear()
-        # TODO this can also be more efficient
+        square_size = self.square_size
         for row in range(8):
             for column in range(8):
-                square = np.asarray(blackness_thresh[row * square_size:(row + 1)
-                                    * square_size, column * square_size:(column + 1) * square_size])
-                blackness = 1 - np.sum(square) / square.size / 255.0
+                square = row_column_to_square(row, column)
+                potential_black_piece = np.asarray(blackness_thresh[row * square_size:(row + 1)
+                                                                    * square_size, column * square_size:(column + 1) * square_size])
+                blackness = 1 - np.sum(potential_black_piece) / potential_black_piece.size / 255.0
                 if blackness > 0.2:
                     for piece in ["p", "n", "b", "r", "k", "q"]:
-                        if mse(self.piece_set[piece], square) < 2000:
-                            self.board.set_piece_at(row_column_to_square(
-                                row, column), chess.Piece.from_symbol(piece))
+                        if mse(self.piece_set[piece], potential_black_piece) < 2000:
+                            self.board.set_piece_at(square, chess.Piece.from_symbol(piece))
                             break
 
-                square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
-                                    * square_size, column * square_size:(column + 1) * square_size])
-                whiteness = np.sum(square) / square.size / 255.0
+                # if a black piece was found on this square, we don't need to check for a white piece
+                if self.board.piece_type_at(square) is not None:
+                    continue
+
+                # now check for a white piece
+                potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
+                                                                    * square_size, column * square_size:(column + 1) * square_size])
+                whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
                 if whiteness > 0.1:
                     for piece in ["P", "N", "B", "R", "K", "Q"]:
-                        if mse(self.piece_set[piece], square) < 2000:
-                            self.board.set_piece_at(row_column_to_square(
-                                row, column), chess.Piece.from_symbol(piece))
+                        if mse(self.piece_set[piece], potential_white_piece) < 2000:
+                            self.board.set_piece_at(square, chess.Piece.from_symbol(piece))
                             break
+
         # assume all castling rights
         self.board.set_castling_fen("QKqk")
 
-        # display a pretty, oriented board
+        # display a pretty, oriented board in the terminal
         if self.flipped:
-            display_board = self.board.transform(chess.flip_vertical).transform(chess.flip_horizontal)
+            display_board = self.board.transform(
+                chess.flip_vertical).transform(chess.flip_horizontal)
         else:
             display_board = self.board
         print("board state:\n" + display_board.unicode(invert_color=True, empty_square="_"))
