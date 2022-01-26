@@ -269,28 +269,39 @@ class ChessGrid:
         return (gray, whiteness_thresh, blackness_thresh)
 
     def reference(self):
-        """Assume the chess pieces are in the starting positions and generate a piece set"""
+        """Assume the chess pieces are in the starting positions and generate a reference piece set"""
         (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
         square_size = self.square_size
         oriented_piece_positions = flipped_piece_positions if self.flipped else piece_positions
         # TODO make more efficient
+        detection_error = False
         for row in range(8):
             for column in range(8):
-                square = np.asarray(blackness_thresh[row * square_size:(row + 1)
-                                    * square_size, column * square_size:(column + 1) * square_size])
-                blackness = 1 - np.sum(square) / square.size / 255.0
-                if blackness > 0.2:
-                    if oriented_piece_positions[row][column].islower():
-                        self.piece_set[oriented_piece_positions[row][column]] = square
+                piece = oriented_piece_positions[row][column]
+                if piece.islower():
+                    potential_black_piece = np.asarray(blackness_thresh[row * square_size:(row + 1)
+                                        * square_size, column * square_size:(column + 1) * square_size])
+                    blackness = 1 - np.sum(potential_black_piece) / potential_black_piece.size / 255.0
+                    if blackness > 0.2:
+                        self.piece_set[piece] = potential_black_piece
+                        # this square is a black piece so we don't need to check white
+                        continue
+                    else:
+                        print("issue detecting the black " + piece)
+                        detection_error = True
 
-                square = np.asarray(whiteness_thresh[row * square_size:(row + 1)
-                                    * square_size, column * square_size:(column + 1) * square_size])
-                whiteness = np.sum(square) / square.size / 255.0
-                if whiteness > 0.1:
-                    if oriented_piece_positions[row][column].isupper():
-                        self.piece_set[oriented_piece_positions[row][column]] = square
+                if piece.isupper():
+                    potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
+                                        * square_size, column * square_size:(column + 1) * square_size])
+                    whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
+                    if whiteness > 0.1:
+                        self.piece_set[piece] = potential_white_piece
+                    else:
+                        print("issue detecting the white " + piece)
+                        detection_error = True
 
-        self.detect_position()
+        if not detection_error:
+            self.detect_position()
 
     def detect_position(self):
         if self.piece_set is None:
