@@ -41,7 +41,6 @@ def mse(imageA, imageB):
     # the two images are
     return err
 
-
 def view_image(image_array, name):
     # open the image (macOS only)
     Image.from_array(image_array).write_file(f"/tmp/{name}.jpg")
@@ -324,6 +323,8 @@ class ChessGrid:
         for row in range(8):
             for column in range(8):
                 square = row_column_to_square(row, column)
+
+                # check for a black piece on this square
                 potential_black_piece = np.asarray(blackness_thresh[row * square_size:(row + 1)
                                                                     * square_size, column * square_size:(column + 1) * square_size])
                 blackness = 1 - np.sum(potential_black_piece) / potential_black_piece.size / 255.0
@@ -403,7 +404,7 @@ class ChessGridActions:
         cg.click_squares(coordinates)
 
     def chess_grid_move(move: typing.List[str], color: str):
-        """Make a move via SAN notation"""
+        """Make a move via SAN notation (e.g. Nc3)"""
         cg.make_move(move, color)
 
     def chess_grid_flip_board(orientation: str):
