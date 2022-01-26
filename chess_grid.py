@@ -201,6 +201,10 @@ class ChessGrid:
             click_position(*coordinate_to_position(coordinates[2:]))
 
     def make_move(self, move: typing.List[str], color: str):
+        if self.piece_set is None:
+            print("cannot make a move without referencing a board first")
+            return
+
         self.detect_position()
 
         # it will be white's turn by default, so pass the turn if it should be black's turn
@@ -211,7 +215,7 @@ class ChessGrid:
         move_san = "".join(move)
         move_san = move_san.replace("n", "N").replace("r", "R").replace(
             "q", "Q").replace("k", "K").replace("o", "O")
-        # this is not perfect because of the pawn taking case
+        # TODO this is not perfect because of the pawn taking case
         if move_san.startswith("b") and len(move_san) == 3:
             move_san = move_san.replace("b", "B", 1)
         # TODO promotion
@@ -305,7 +309,7 @@ class ChessGrid:
 
     def detect_position(self, *, thresholds=None):
         if self.piece_set is None:
-            # a board has not been referenced yet, fail silently
+            print("cannot detect position without referencing a board first")
             return
 
         if thresholds is not None:
