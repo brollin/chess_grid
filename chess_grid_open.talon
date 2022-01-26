@@ -6,6 +6,9 @@ tag: user.chess_grid_activated
 ^mark <user.any_alphanumeric_key>+$:
     user.chess_grid_move(any_alphanumeric_key_list, "white")
 
+^white <user.any_alphanumeric_key>+$:
+    user.chess_grid_move(any_alphanumeric_key_list, "white")
+
 ^black <user.any_alphanumeric_key>+$:
     user.chess_grid_move(any_alphanumeric_key_list, "black")
 

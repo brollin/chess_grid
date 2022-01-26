@@ -1,12 +1,12 @@
-import chess
-import subprocess
 from talon import Module, Context, canvas, ui, ctrl, screen
-from talon.skia import Paint, Rect, Image
-from talon.types.point import Point2d
-import time
-import typing
+from talon.skia import Paint, Image
+from talon.types import point
+import chess
 import cv2
 import numpy as np
+import subprocess
+import time
+import typing
 
 mod = Module()
 
@@ -40,6 +40,12 @@ def mse(imageA, imageB):
     # return the MSE, the lower the error, the more "similar"
     # the two images are
     return err
+
+
+def view_image(image_array, name):
+    # open the image (macOS only)
+    Image.from_array(image_array).write_file(f"/tmp/{name}.jpg")
+    subprocess.run(("open", f"/tmp/{name}.jpg"))
 
 
 class ChessGrid:
@@ -130,7 +136,7 @@ class ChessGrid:
                         text_string = chr(97 + col) + f"{8 - row}"
                     text_rect = canvas.paint.measure_text(text_string)[1]
                     background_rect = text_rect.copy()
-                    background_rect.center = Point2d(
+                    background_rect.center = point.Point2d(
                         self.rect.x + self.square_size * 3 / 4 + col * self.square_size,
                         self.rect.y + self.square_size * 3 / 4 + row * self.square_size,
                     )
@@ -229,16 +235,13 @@ class ChessGrid:
 
         # find the chessboard by first applying a threshold filter to the grayscale window
         window_rect = ui.active_window().rect
-        img = screen.capture_rect(window_rect)
-        imgUmat = np.array(img)
-        gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
+        img = np.array(screen.capture_rect(window_rect))
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
 
         # use a close morphology transform to filter out thin lines
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4,8))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 8))
         morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-        # Image.from_array(morph).write_file('/tmp/morph.jpg')
-        # subprocess.run(("open", "/tmp/morph.jpg"))
 
         # now search all of the contours for a large square-ish thing; that is hopefully the board
         contours, _ = cv2.findContours(morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -246,9 +249,8 @@ class ChessGrid:
             (x, y, w, h) = cv2.boundingRect(c)
             if (w >= 400 and w < 1500) and (h > 400 and h < 1500) and (abs(w - h) < 60):
                 # crop_img = thresh[y:y+h, x:x+w]
-                # Image.from_array(crop_img).write_file('/tmp/contour.jpg')
-                # subprocess.run(("open", "/tmp/contour.jpg"))
 
+                # find the largest centered square in the rectangle
                 board_size = min(w, h)
                 centered_x = window_rect.x + x + (w - board_size) / 2
                 centered_y = window_rect.y + y + (h - board_size) / 2
@@ -258,17 +260,11 @@ class ChessGrid:
 
     def apply_thresholds(self):
         """Return the grayscale and whiteness and blackness thresholds for the board"""
-        img = screen.capture_rect(self.rect)
-        imgUmat = np.array(img)
-        gray = cv2.cvtColor(imgUmat, cv2.COLOR_BGR2GRAY)
+        img = np.array(screen.capture_rect(self.rect))
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         _, whiteness_thresh = cv2.threshold(gray, 210, 255, cv2.THRESH_BINARY)
-        # Image.from_array(whiteness_thresh).write_file('/tmp/findwhite.jpg')
-        # subprocess.run(("open", "/tmp/findwhite.jpg"))
-
         _, blackness_thresh = cv2.threshold(gray, 40, 255, cv2.THRESH_BINARY)
-        # Image.from_array(blackness_thresh).write_file('/tmp/findblack.jpg')
-        # subprocess.run(("open", "/tmp/findblack.jpg"))
 
         return (gray, whiteness_thresh, blackness_thresh)
 
@@ -277,15 +273,13 @@ class ChessGrid:
         (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
         square_size = self.square_size
         oriented_piece_positions = flipped_piece_positions if self.flipped else piece_positions
-        # board = [["_"] * 8 for _ in range(8)]
-        # this can be way more efficient, but lose ability to show black and white pieces
+        # TODO make more efficient
         for row in range(8):
             for column in range(8):
                 square = np.asarray(blackness_thresh[row * square_size:(row + 1)
                                     * square_size, column * square_size:(column + 1) * square_size])
                 blackness = 1 - np.sum(square) / square.size / 255.0
                 if blackness > 0.2:
-                    # board[row][column] = "B"
                     if oriented_piece_positions[row][column].islower():
                         self.piece_set[oriented_piece_positions[row][column]] = square
 
@@ -293,14 +287,15 @@ class ChessGrid:
                                     * square_size, column * square_size:(column + 1) * square_size])
                 whiteness = np.sum(square) / square.size / 255.0
                 if whiteness > 0.1:
-                    # board[row][column] = "W"
                     if oriented_piece_positions[row][column].isupper():
                         self.piece_set[oriented_piece_positions[row][column]] = square
-        # print('\n' + '\n'.join([''.join(row) for row in board]))
 
         self.detect_position()
 
     def detect_position(self):
+        if self.piece_set is None:
+            # a board has not been referenced yet
+            return
         # TODO this is called twice when reference is run
         (_, whiteness_thresh, blackness_thresh) = self.apply_thresholds()
         square_size = self.square_size
@@ -335,7 +330,13 @@ class ChessGrid:
                             break
         # assume all castling rights
         self.board.set_castling_fen("QKqk")
-        print("board state:\n" + str(self.board))
+
+        # display a pretty, oriented board
+        if self.flipped:
+            display_board = self.board.transform(chess.flip_vertical).transform(chess.flip_horizontal)
+        else:
+            display_board = self.board
+        print("board state:\n" + display_board.unicode(invert_color=True, empty_square="_"))
 
 
 cg = ChessGrid()
