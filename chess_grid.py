@@ -298,7 +298,7 @@ class ChessGrid:
                     potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                                                         * square_size, column * square_size:(column + 1) * square_size])
                     whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
-                    if whiteness > 0.1:
+                    if whiteness > 0.08:
                         self.piece_set[piece] = potential_white_piece
                     else:
                         print("issue detecting the white " + piece)
@@ -346,7 +346,7 @@ class ChessGrid:
                 potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                                                     * square_size, column * square_size:(column + 1) * square_size])
                 whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
-                if whiteness > 0.1:
+                if whiteness > 0.08:
                     for piece in ["P", "N", "B", "R", "K", "Q"]:
                         if mse(self.piece_set[piece], potential_white_piece) < 2000:
                             self.board.set_piece_at(square, chess.Piece.from_symbol(piece))
