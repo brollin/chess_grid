@@ -8,7 +8,7 @@ Chess Grid allows you to use voice commands to move pieces on any chess board. I
 
 ## Normal Use
 1. Open any chess website or chess desktop app, such as [Lichess](https://lichess.org)
-1. With the board in its starting position, used the voice command `chess reference white` to find the chessboard and detect the pieces (`white` such that it knows you are the white player)
+1. With the board in its starting position, use the voice command `chess reference white` to find the chessboard and detect the pieces (`white` such that it knows you are the white player)
 1. Now issue a move with the voice command `white each four` which will move white's pawn from e2 to e4
 
 ### Tips
@@ -36,7 +36,7 @@ Never fear! You can then hide the grid with the command `chess hide`.
 
 You can move any piece with a command such as
 
-`mark each four fine five`
+`manual each four fine five`
 
 to move the pawn (or whatever piece is there) from e4 to f5.
 
