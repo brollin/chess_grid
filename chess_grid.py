@@ -9,7 +9,6 @@ import time
 import typing
 
 mod = Module()
-
 mod.tag("chess_grid_activated", desc="Tag indicates whether the chess grid is showing")
 ctx = Context()
 
@@ -122,8 +121,6 @@ class ChessGrid:
                     self.rect.y + i * self.square_size,
                 )
 
-        grid_stroke = 1
-
         def draw_text():
             canvas.paint.text_align = canvas.paint.TextAlign.CENTER
             for row in range(8):
@@ -150,7 +147,7 @@ class ChessGrid:
                         self.rect.y + self.square_size * 3 / 4 + row * self.square_size + text_rect.height / 2,
                     )
 
-        paint.stroke_width = grid_stroke
+        paint.stroke_width = 1
         paint.color = "ff0000ff"
         draw_grid()
 
