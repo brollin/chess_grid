@@ -247,7 +247,7 @@ class ChessGrid:
         contours, _ = cv2.findContours(morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
             (x, y, w, h) = cv2.boundingRect(c)
-            if (w >= 400 and w < 1500) and (h > 400 and h < 1500) and (abs(w - h) < 60):
+            if (w >= 270 and w < 1500) and (h > 270 and h < 1500) and (abs(w - h) < 60):
                 # crop_img = thresh[y:y+h, x:x+w]
 
                 # find the largest centered square in the rectangle
