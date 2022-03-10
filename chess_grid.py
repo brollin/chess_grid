@@ -238,14 +238,18 @@ class ChessGrid:
         img = np.array(screen.capture_rect(window_rect))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
+        # apply a second threshold for the dark mode case
+        _, thresh2 = cv2.threshold(gray, 115, 255, cv2.THRESH_BINARY)
 
         # use a close morphology transform to filter out thin lines
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 8))
         morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        morph2 = cv2.morphologyEx(thresh2, cv2.MORPH_CLOSE, kernel)
 
         # now search all of the contours for a large square-ish thing; that is hopefully the board
         contours, _ = cv2.findContours(morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        for c in contours:
+        contours2, _ = cv2.findContours(morph2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for c in contours + contours2:
             (x, y, w, h) = cv2.boundingRect(c)
             if (w >= 270 and w < 1500) and (h > 270 and h < 1500) and (abs(w - h) < 60):
                 # crop_img = thresh[y:y+h, x:x+w]
@@ -331,7 +335,7 @@ class ChessGrid:
                 blackness = 1 - np.sum(potential_black_piece) / potential_black_piece.size / 255.0
                 if blackness > 0.2:
                     for piece in ["p", "n", "b", "r", "k", "q"]:
-                        if mse(self.piece_set[piece], potential_black_piece) < 2000:
+                        if mse(self.piece_set[piece], potential_black_piece) < 3000:
                             self.board.set_piece_at(square, chess.Piece.from_symbol(piece))
                             break
 
