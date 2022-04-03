@@ -9,7 +9,8 @@ import time
 import typing
 
 mod = Module()
-mod.tag("chess_grid_activated", desc="Tag indicates whether the chess grid is showing")
+mod.tag("chess_grid_activated",
+        desc="Tag indicates whether the chess grid is showing")
 ctx = Context()
 
 files = ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -39,6 +40,7 @@ def mse(imageA, imageB):
     # return the MSE, the lower the error, the more "similar"
     # the two images are
     return err
+
 
 def view_image(image_array, name):
     # open the image (macOS only)
@@ -144,7 +146,8 @@ class ChessGrid:
                     canvas.draw_text(
                         text_string,
                         self.rect.x + self.square_size * 3 / 4 + col * self.square_size,
-                        self.rect.y + self.square_size * 3 / 4 + row * self.square_size + text_rect.height / 2,
+                        self.rect.y + self.square_size * 3 / 4 + row *
+                        self.square_size + text_rect.height / 2,
                     )
 
         paint.stroke_width = 1
@@ -238,7 +241,7 @@ class ChessGrid:
         img = np.array(screen.capture_rect(window_rect))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
-        # apply a second threshold for the dark mode case
+        # apply a threshold for the dark mode case
         _, thresh2 = cv2.threshold(gray, 115, 255, cv2.THRESH_BINARY)
 
         # use a close morphology transform to filter out thin lines
@@ -247,8 +250,10 @@ class ChessGrid:
         morph2 = cv2.morphologyEx(thresh2, cv2.MORPH_CLOSE, kernel)
 
         # now search all of the contours for a large square-ish thing; that is hopefully the board
-        contours, _ = cv2.findContours(morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        contours2, _ = cv2.findContours(morph2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours2, _ = cv2.findContours(
+            morph2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours + contours2:
             (x, y, w, h) = cv2.boundingRect(c)
             if (w >= 270 and w < 1500) and (h > 270 and h < 1500) and (abs(w - h) < 60):
@@ -298,7 +303,8 @@ class ChessGrid:
                 if piece.isupper():
                     potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                                                         * square_size, column * square_size:(column + 1) * square_size])
-                    whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
+                    whiteness = np.sum(potential_white_piece) / \
+                        potential_white_piece.size / 255.0
                     if whiteness > 0.08:
                         self.piece_set[piece] = potential_white_piece
                     else:
@@ -332,11 +338,13 @@ class ChessGrid:
                 # check for a black piece on this square
                 potential_black_piece = np.asarray(blackness_thresh[row * square_size:(row + 1)
                                                                     * square_size, column * square_size:(column + 1) * square_size])
-                blackness = 1 - np.sum(potential_black_piece) / potential_black_piece.size / 255.0
+                blackness = 1 - np.sum(potential_black_piece) / \
+                    potential_black_piece.size / 255.0
                 if blackness > 0.2:
                     for piece in ["p", "n", "b", "r", "k", "q"]:
                         if mse(self.piece_set[piece], potential_black_piece) < 3000:
-                            self.board.set_piece_at(square, chess.Piece.from_symbol(piece))
+                            self.board.set_piece_at(
+                                square, chess.Piece.from_symbol(piece))
                             break
 
                 # if a black piece was found on this square, we don't need to check for a white piece
@@ -346,11 +354,13 @@ class ChessGrid:
                 # now check for a white piece
                 potential_white_piece = np.asarray(whiteness_thresh[row * square_size:(row + 1)
                                                                     * square_size, column * square_size:(column + 1) * square_size])
-                whiteness = np.sum(potential_white_piece) / potential_white_piece.size / 255.0
+                whiteness = np.sum(potential_white_piece) / \
+                    potential_white_piece.size / 255.0
                 if whiteness > 0.08:
                     for piece in ["P", "N", "B", "R", "K", "Q"]:
                         if mse(self.piece_set[piece], potential_white_piece) < 2000:
-                            self.board.set_piece_at(square, chess.Piece.from_symbol(piece))
+                            self.board.set_piece_at(
+                                square, chess.Piece.from_symbol(piece))
                             break
 
         # assume all castling rights
@@ -362,7 +372,8 @@ class ChessGrid:
                 chess.flip_vertical).transform(chess.flip_horizontal)
         else:
             display_board = self.board
-        print("board state:\n" + display_board.unicode(invert_color=True, empty_square="_"))
+        print("board state:\n" +
+              display_board.unicode(invert_color=True, empty_square="_"))
 
 
 cg = ChessGrid()
