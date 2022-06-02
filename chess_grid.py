@@ -29,6 +29,11 @@ piece_positions = [
 ]
 flipped_piece_positions = [row[::-1] for row in piece_positions[::-1]]
 
+BLACK = 0.2 # how black are the pieces? may have to adjust
+WHITE = 0.08 # how white are the pieces? may have to adjust
+
+BOARD_DARKNESS = 80 # how dark are dark squares? may have to adjust
+BOARD_LIGHTNESS = 150 # how light are light squares? may have to adjust
 
 def mse(imageA, imageB):
     # the 'Mean Squared Error' between the two images is the
@@ -272,8 +277,8 @@ class ChessGrid:
         img = np.array(screen.capture_rect(self.rect))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        _, whiteness_thresh = cv2.threshold(gray, 210, 255, cv2.THRESH_BINARY)
-        _, blackness_thresh = cv2.threshold(gray, 40, 255, cv2.THRESH_BINARY)
+        _, whiteness_thresh = cv2.threshold(gray, BOARD_LIGHTNESS, 255, cv2.THRESH_BINARY)
+        _, blackness_thresh = cv2.threshold(gray, BOARD_DARKNESS, 255, cv2.THRESH_BINARY)
 
         return (gray, whiteness_thresh, blackness_thresh)
 
@@ -292,7 +297,7 @@ class ChessGrid:
                                                                         * square_size, column * square_size:(column + 1) * square_size])
                     blackness = 1 - np.sum(potential_black_piece) / \
                         potential_black_piece.size / 255.0
-                    if blackness > 0.2:
+                    if blackness > BLACK:
                         self.piece_set[piece] = potential_black_piece
                         # this square is a black piece so we don't need to check white
                         continue
@@ -305,7 +310,7 @@ class ChessGrid:
                                                                         * square_size, column * square_size:(column + 1) * square_size])
                     whiteness = np.sum(potential_white_piece) / \
                         potential_white_piece.size / 255.0
-                    if whiteness > 0.08:
+                    if whiteness > WHITE:
                         self.piece_set[piece] = potential_white_piece
                     else:
                         print("issue detecting the white " + piece)
@@ -340,7 +345,7 @@ class ChessGrid:
                                                                     * square_size, column * square_size:(column + 1) * square_size])
                 blackness = 1 - np.sum(potential_black_piece) / \
                     potential_black_piece.size / 255.0
-                if blackness > 0.2:
+                if blackness > BLACK:
                     for piece in ["p", "n", "b", "r", "k", "q"]:
                         if mse(self.piece_set[piece], potential_black_piece) < 3000:
                             self.board.set_piece_at(
@@ -356,7 +361,7 @@ class ChessGrid:
                                                                     * square_size, column * square_size:(column + 1) * square_size])
                 whiteness = np.sum(potential_white_piece) / \
                     potential_white_piece.size / 255.0
-                if whiteness > 0.08:
+                if whiteness > WHITE:
                     for piece in ["P", "N", "B", "R", "K", "Q"]:
                         if mse(self.piece_set[piece], potential_white_piece) < 2000:
                             self.board.set_piece_at(
