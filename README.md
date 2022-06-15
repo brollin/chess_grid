@@ -33,6 +33,7 @@ Chess Grid allows you to use voice commands to move pieces on any chess board. I
   `white Nc3` -> `white near cap three` -> move white's knight to c3
 
   `black Rad8` -> `black red air drum eight` -> move black's rook on the a-file to d8
+
   `white O-O` -> `white odd dash odd` -> short castle as white
 
 - You may not need to run `chess reference` at the start of every game. As long as you are using the same website, piece set, and haven't repositioned the window, the board and pieces should be detected successfully. You can always use the commands `chess white` and `chess black` to reorient the board if you switch sides between games.
