@@ -59,6 +59,7 @@ to move the pawn (or whatever piece is there) from e4 to f5.
 
 ## Troubleshooting tips
 
+- If you are on chess.com, make sure that the coordinates are set to render "inside" the board, which helps board recognition.
 - Check the talon logs. Some boards and their pieces are harder to detect, so `chess reference` may fail by not finding all of the pieces. You can probably still use the manual mode described above.
 - If manual mode is working, but `chess reference` does not, you can play with `BOARD_DARKNESS` or `BOARD_LIGHTNESS` which are common culprits.
 - `chess detect` is a useful voice command that will print out the state of the board as it is understood. You can use this to get a sense of what is being missed.
